@@ -1,74 +1,51 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using SearchFlights.Managers;
-using SearchFlights.Models;
-using System.Configuration;
 
 namespace SearchFlights
-{ 
+{
     class Program
     {
-        static string origin = string.Empty;
-
-        static string destination = string.Empty;
-
-        static string rootPath = ConfigurationSettings.AppSettings["rootPath"];
-
         static void Main(string[] args)
         {
             try
             {
-                string targetPath = rootPath + ConfigurationSettings.AppSettings["processedProviderFileName"];
-
-                CombineProviderData(targetPath);
-
-                AcceptInput();
+                var input = GetOriginDestination();
 
                 var services = new ServiceCollection();
                 services.AddTransient<IFlightManager, FlightManager>();
                 var provider = services.BuildServiceProvider();
-                IFlightManager flightManager = provider.GetService<IFlightManager>();
+                var flightManager = provider.GetService<IFlightManager>();
 
-                //hash set used to avoid duplicate results
-                HashSet<Flight> flights = flightManager.SearchFlights(targetPath, origin, destination);
+                var result = flightManager.SearchFlights(origin: input.Item1, destination: input.Item2);
 
-                DisplayResult(flights);
-
-                Console.ReadLine();
+                Console.WriteLine(result);
             }
             catch (Exception e)
             {
                 Console.WriteLine("Exception: " + e.Message);
             }
+            finally
+            {
+                Console.ReadKey(true);
+            }
         }
 
-        static void CombineProviderData(string targetPath)
-        {
-            string sourcePath1 = rootPath + ConfigurationSettings.AppSettings["processedProviderFileName"];
-            string sourcePath2 = rootPath + ConfigurationSettings.AppSettings["processedProviderFileName"];
-            string sourcePath3 = rootPath + ConfigurationSettings.AppSettings["processedProviderFileName"];
-
-            File.WriteAllLines(targetPath, File.ReadAllLines(sourcePath1).Skip(1));
-            File.AppendAllLines(targetPath, File.ReadAllLines(sourcePath2).Skip(1));
-            File.AppendAllLines(targetPath, File.ReadAllLines(sourcePath3).Skip(1));
-        }
-
-        static void AcceptInput()
+        static Tuple<string, string> GetOriginDestination()
         {
             Console.WriteLine("Search flights by origin and destination");
-            bool validInput = false;
+            var isValidInput = false;
+            var origin = string.Empty;
+            var destination = string.Empty;
 
-            while (!validInput)
+            while (!isValidInput)
             {
                 Console.WriteLine("Enter input in format: searchFlights -o {Origin} -d {Destination}");
-                string line = Console.ReadLine();
-                string[] input = line.Split(' ');
+                var line = Console.ReadLine();
+                var input = line.Split(' ');
                 if (input.Length == 5 && input[0].Equals("searchFlights") && input[1].Equals("-o") && input[3].Equals("-d"))
                 {
-                    validInput = true;
+                    isValidInput = true;
                     origin = input[2];
                     destination = input[4];
                 }
@@ -77,32 +54,7 @@ namespace SearchFlights
                     Console.WriteLine("Invalid input!");
                 }
             }
-        }
-
-        static void DisplayResult(HashSet<Flight> flights)
-        {
-            if (flights.Count > 0)
-            {
-                //to sort by price and then by departure time
-                flights = new HashSet<Flight>(flights.OrderBy(f => f.Price).ThenBy(f => f.DepartureTime));
-
-                foreach (var flight in flights)
-                {
-                    Console.WriteLine(flight.Origin + 
-                                        " --> " + 
-                                        flight.Destination + 
-                                        " (" + 
-                                        flight.DepartureTime.ToString("M/dd/yyyy H:mm:ss") + 
-                                        " --> " + 
-                                        flight.DestinationTime.ToString("M/dd/yyyy H:mm:ss") + 
-                                        ") - $" + 
-                                        flight.Price);
-                }
-            }
-            else
-            {
-                Console.WriteLine("No Flights Found for " + origin + " --> " + destination);
-            }
+            return new Tuple<string, string>(origin, destination);
         }
     }
 }

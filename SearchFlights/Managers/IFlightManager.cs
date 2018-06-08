@@ -5,6 +5,6 @@ namespace SearchFlights.Managers
 {
     interface IFlightManager
     {
-        HashSet<Flight> SearchFlights(string targetPath, string origin, string destination);
+        string SearchFlights(string origin, string destination);
     }
 }
